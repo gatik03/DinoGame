@@ -1,0 +1,305 @@
+/* ============================================================
+   NEON RUNNER - main.css
+   ============================================================ */
+
+/* 1. CSS Reset and Base
+   ============================================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #060612;
+}
+
+body {
+  font-family: 'Share Tech Mono', monospace;
+  color: #00ffff;
+}
+
+/* 14. CRT Scanline overlay */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.015) 2px,
+    rgba(0, 0, 0, 0.015) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.03;
+}
+
+/* 2. Game Container
+   ============================================================ */
+#game-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #060612;
+}
+
+/* 3. Canvas
+   ============================================================ */
+#gameCanvas {
+  display: block;
+  max-width: 100%;
+  cursor: pointer;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  border: 1px solid rgba(0, 255, 255, 0.2);
+  box-shadow:
+    0 0 40px rgba(0, 255, 255, 0.3),
+    0 0 80px rgba(0, 255, 255, 0.1);
+}
+
+/* 4. Mobile Controls
+   ============================================================ */
+#mobile-controls {
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  display: none;
+  justify-content: space-around;
+  padding: 0 20px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+@media (hover: none) {
+  #mobile-controls {
+    display: flex;
+    pointer-events: auto;
+  }
+}
+
+/* 5. Mobile Buttons
+   ============================================================ */
+.mobile-btn {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(0, 255, 255, 0.1);
+  border: 2px solid #00ffff;
+  color: #00ffff;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  text-shadow: 0 0 10px #00ffff;
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+  transition: all 0.1s;
+}
+
+.mobile-btn:active {
+  background: rgba(0, 255, 255, 0.3);
+  transform: scale(0.95);
+}
+
+/* 6. Name Input Overlay
+   ============================================================ */
+#name-input-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 100;
+}
+
+/* 7. Name Input Panel
+   ============================================================ */
+#name-input-panel {
+  background: rgba(6, 6, 18, 0.95);
+  border: 2px solid #00ffff;
+  box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+  padding: 30px 40px;
+  text-align: center;
+  border-radius: 4px;
+}
+
+#name-input-panel h3 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.2rem;
+  color: #00ffff;
+  margin-bottom: 20px;
+  text-shadow: 0 0 15px #00ffff, 0 0 30px rgba(0, 255, 255, 0.5);
+  letter-spacing: 3px;
+}
+
+#playerName {
+  background: rgba(0, 255, 255, 0.05);
+  border: 1px solid #00ffff;
+  color: #00ffff;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 1.1rem;
+  padding: 10px 16px;
+  width: 200px;
+  outline: none;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 16px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  transition: box-shadow 0.2s;
+}
+
+#playerName:focus {
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.4);
+}
+
+#playerName::placeholder {
+  color: rgba(0, 255, 255, 0.35);
+}
+
+/* 8. Neon Button Base
+   ============================================================ */
+.neon-btn {
+  background: transparent;
+  border: 2px solid currentColor;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 10px 24px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.neon-btn:hover {
+  box-shadow: 0 0 20px currentColor;
+  background: rgba(255, 255, 255, 0.05);
+  transform: scale(1.02);
+}
+
+/* 9. Submit / Skip Buttons
+   ============================================================ */
+#submitScoreBtn {
+  color: #00ffff;
+  margin-right: 8px;
+}
+
+#submitScoreBtn:hover {
+  background: rgba(0, 255, 255, 0.1);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+}
+
+#skipSubmitBtn {
+  color: #ff00ff;
+}
+
+#skipSubmitBtn:hover {
+  background: rgba(255, 0, 255, 0.1);
+  box-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
+}
+
+/* 10. Scrollbar Styling
+   ============================================================ */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #060612;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 255, 0.5);
+}
+
+/* 11. Keyframe Animations
+   ============================================================ */
+@keyframes neonPulse {
+  0%   { opacity: 1; }
+  50%  { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes glitch {
+  0%   {
+    text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff;
+    transform: translate(0, 0);
+  }
+  20%  {
+    text-shadow: -2px 0 #ff00ff, 2px 0 #00ffff, 0 0 20px #00ffff;
+    transform: translate(-1px, 0);
+  }
+  40%  {
+    text-shadow: 2px 0 #ff00ff, -2px 0 #00ffff, 0 0 20px #00ffff;
+    transform: translate(1px, 0);
+  }
+  60%  {
+    text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff;
+    transform: translate(0, 0);
+  }
+  80%  {
+    text-shadow: -1px 0 #ff00ff, 1px 0 #00ffff, 0 0 10px #00ffff;
+    transform: translate(-1px, 1px);
+  }
+  100% {
+    text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff;
+    transform: translate(0, 0);
+  }
+}
+
+/* 12. Achievement Area
+   ============================================================ */
+#achievement-area {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  pointer-events: none;
+  z-index: 50;
+}
+
+/* 13. Responsive - small screens
+   ============================================================ */
+@media (max-width: 600px) {
+  .mobile-btn {
+    width: 64px;
+    height: 64px;
+    font-size: 8px;
+  }
+}

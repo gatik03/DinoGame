@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>NEON RUNNER</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Mobile controls overlay -->
+    <div id="mobile-controls">
+      <button id="btn-jump" class="mobile-btn">JUMP</button>
+      <button id="btn-slide" class="mobile-btn">SLIDE</button>
+      <button id="btn-dash" class="mobile-btn">DASH</button>
+    </div>
+
+    <!-- Player name input for score submission -->
+    <div id="name-input-overlay" style="display:none">
+      <div id="name-input-panel">
+        <h3>ENTER YOUR NAME</h3>
+        <input type="text" id="playerName" maxlength="20" placeholder="PLAYER">
+        <button id="submitScoreBtn" class="neon-btn">SUBMIT</button>
+        <button id="skipSubmitBtn" class="neon-btn">SKIP</button>
+      </div>
+    </div>
+
+    <!-- Achievement notification area -->
+    <div id="achievement-area"></div>
+  </div>
+
+  <!-- Load game scripts in dependency order -->
+  <script src="/js/config.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/audio.js"></script>
+  <script src="/js/particles.js"></script>
+  <script src="/js/player.js"></script>
+  <script src="/js/obstacles.js"></script>
+  <script src="/js/powerups.js"></script>
+  <script src="/js/boss.js"></script>
+  <script src="/js/background.js"></script>
+  <script src="/js/achievements.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/game.js"></script>
+</body>
+</html>
