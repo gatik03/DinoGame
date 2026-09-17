@@ -58,6 +58,12 @@ class Score {
     const row = db.prepare('SELECT COUNT(*) as cnt FROM scores WHERE score > ?').get(score);
     return (row?.cnt ?? 0) + 1;
   }
+
+  static getUserRank(userId) {
+    const best = db.prepare("SELECT MAX(score) AS score FROM scores WHERE user_id = ? AND validation_status = 'valid'").get(userId)?.score;
+    if (best == null) return null;
+    return this.getPlayerRank(best);
+  }
 }
 
 module.exports = Score;

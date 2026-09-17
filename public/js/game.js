@@ -43,6 +43,7 @@ class Game {
 
     this.keys = {};
     this._nameInputShown = false;
+    this.scoreSubmission = 'idle';
 
     window.mobileInput = {
       jumpPress:  (e) => { e.preventDefault(); this._tryJump(); },
@@ -215,7 +216,7 @@ class Game {
     submitBtn.addEventListener('click', async () => {
       const name = (input.value || '').trim().toUpperCase() || 'PLAYER';
       await this._submitScore(name);
-      this._hideNameInput();
+      if (this.scoreSubmission === 'submitted') this._hideNameInput();
     });
 
     skipBtn.addEventListener('click', () => this._hideNameInput());
@@ -224,7 +225,7 @@ class Game {
       if (e.key === 'Enter') {
         const name = (input.value || '').trim().toUpperCase() || 'PLAYER';
         await this._submitScore(name);
-        this._hideNameInput();
+        if (this.scoreSubmission === 'submitted') this._hideNameInput();
       }
     });
   }
@@ -237,7 +238,9 @@ class Game {
     if (scoreDisplay) scoreDisplay.textContent = Utils.formatScore(this.score);
     overlay.style.display = 'flex';
     overlay.classList.add('visible');
-    if (input) { input.value = ''; setTimeout(() => input.focus(), 50); }
+    if (input) { input.value = window.accountUI?.user?.display_name || ''; setTimeout(() => input.focus(), 50); }
+    const status = document.getElementById('score-submit-status');
+    if (status) status.textContent = this.scoreSubmission === 'submitted' ? 'SCORE ALREADY SAVED.' : '';
     this._nameInputShown = true;
   }
 
@@ -251,6 +254,12 @@ class Game {
   }
 
   async _submitScore(name) {
+    if (this.scoreSubmission === 'pending' || this.scoreSubmission === 'submitted') return;
+    this.scoreSubmission = 'pending';
+    const status = document.getElementById('score-submit-status');
+    const submitButton = document.getElementById('submitScoreBtn');
+    if (status) { status.textContent = 'UPLOADING SCORE…'; status.classList.remove('error'); }
+    if (submitButton) submitButton.disabled = true;
     const stats = {
       playtime_seconds:  Math.floor((Date.now() - this.startTime) / 1000),
       total_jumps:       this.totalJumps,
@@ -260,6 +269,9 @@ class Game {
       powerups_collected: this.powerupManager ? this.powerupManager.totalCollected : 0,
     };
     let result;
+    if (!this.gameSession && this.gameSessionPromise) {
+      try { this.gameSession = await this.gameSessionPromise; } catch (_) { this.gameSession = null; }
+    }
     if (this.gameSession) {
       const sessionResult = await window.API.finishGameSession(
         this.gameSession,
@@ -277,7 +289,13 @@ class Game {
     }
     if (result && result.success) {
       console.log(`Score saved! Rank #${result.rank}`);
+      this.scoreSubmission = 'submitted';
+      if (status) status.textContent = result.validationStatus === 'suspicious' ? 'SCORE RECEIVED — UNDER REVIEW.' : 'SCORE SAVED TO THE GRID.';
+    } else {
+      this.scoreSubmission = 'idle';
+      if (status) { status.textContent = result?.error || 'UPLOAD FAILED — YOUR RUN IS SAFE. TRY AGAIN.'; status.classList.add('error'); }
     }
+    if (submitButton) submitButton.disabled = false;
   }
 
   // ─── Game Flow ────────────────────────────────────────────────────────────
@@ -297,6 +315,7 @@ class Game {
     this.noHitScore       = 0;
     this.startTime        = Date.now();
     this.gameSession = null;
+    this.scoreSubmission = 'idle';
     this.gameSessionPromise = window.API.createGameSession()
       .then((session) => { this.gameSession = session; return session; });
 

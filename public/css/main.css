@@ -68,6 +68,41 @@ body::after {
     0 0 80px rgba(0, 255, 255, 0.1);
 }
 
+#app-toolbar { position: absolute; top: 14px; right: 18px; z-index: 20; display: flex; gap: 10px; align-items: center; font-size: 10px; color: rgba(0,255,255,.7); }
+.toolbar-btn { background: rgba(6,6,18,.8); border: 1px solid rgba(0,255,255,.55); color: #00ffff; padding: 7px 10px; font: 700 9px 'Orbitron', sans-serif; cursor: pointer; letter-spacing: 1px; }
+.toolbar-btn:hover, .toolbar-btn:focus-visible { box-shadow: 0 0 12px rgba(0,255,255,.6); outline: 2px solid #00ffff; outline-offset: 2px; }
+.app-panel { position: absolute; inset: 0; z-index: 50; display: none; align-items: center; justify-content: center; padding: 20px; background: rgba(2,2,12,.86); }
+.app-panel.visible { display: flex; animation: fadeIn .18s ease-out; }
+.panel-card { position: relative; width: min(620px, 100%); max-height: 90vh; overflow: auto; padding: 28px; border: 1px solid #00ffff; background: rgba(6,6,24,.97); box-shadow: 0 0 28px rgba(0,255,255,.28), inset 0 0 28px rgba(255,0,255,.06); }
+.panel-card h2 { margin-bottom: 22px; color: #00ffff; font: 900 21px 'Orbitron', sans-serif; letter-spacing: 3px; text-shadow: 0 0 14px #00ffff; }
+.panel-card h3 { margin: 8px 0 12px; color: #ff66ff; font: 700 12px 'Orbitron', sans-serif; letter-spacing: 1px; }
+.panel-close { position: absolute; top: 8px; right: 12px; border: 0; background: transparent; color: #ff00ff; font-size: 26px; cursor: pointer; }
+.auth-form { display: inline-flex; vertical-align: top; width: calc(50% - 12px); margin-right: 18px; flex-direction: column; gap: 9px; }
+.auth-form:last-child { margin-right: 0; }
+.auth-form label { color: rgba(220,240,255,.8); font-size: 11px; text-transform: uppercase; }
+.auth-form input { display: block; width: 100%; margin-top: 5px; padding: 9px; border: 1px solid rgba(0,255,255,.65); background: #0a0a20; color: #00ffff; font: 13px 'Share Tech Mono', monospace; }
+.auth-form input:focus { outline: 2px solid #ff00ff; outline-offset: 2px; }
+.auth-form .neon-btn, #profileView .neon-btn { margin-top: 8px; color: #00ffff; }
+.hidden { display: none !important; }
+.panel-message { min-height: 18px; margin-top: 13px; color: rgba(0,255,255,.75); font-size: 11px; }
+.panel-message.error { color: #ff5577; }
+.leaderboard-head, .leaderboard-row { display: grid; grid-template-columns: 48px 1fr 120px 100px; gap: 8px; align-items: center; padding: 9px 4px; font-size: 11px; }
+.leaderboard-head { border-bottom: 1px solid rgba(0,255,255,.45); color: #ff66ff; font: 700 9px 'Orbitron', sans-serif; }
+.leaderboard-row { border-bottom: 1px solid rgba(100,130,180,.18); color: rgba(230,245,255,.9); }
+.leaderboard-row span:first-child, .leaderboard-row span:nth-child(3) { color: #00ffff; }
+.pager { display: flex; justify-content: space-between; margin-top: 16px; }
+.polling-note { display: block; margin-top: 14px; color: rgba(170,190,220,.6); font-size: 9px; text-align: center; }
+
+@media (max-width: 560px) {
+  #app-toolbar { top: 8px; right: 8px; left: 8px; justify-content: flex-end; }
+  #authStatus { display: none; }
+  .panel-card { padding: 22px 16px; }
+  .auth-form { display: flex; width: 100%; margin: 0 0 18px; }
+  .leaderboard-head, .leaderboard-row { grid-template-columns: 32px 1fr 80px 74px; font-size: 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) { .app-panel.visible { animation: none; } }
+
 #three-layer {
   position: absolute;
   display: block;

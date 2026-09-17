@@ -17,6 +17,54 @@
   <div id="game-container">
     <canvas id="gameCanvas"></canvas>
 
+    <nav id="app-toolbar" aria-label="Player navigation">
+      <span id="authStatus">// GUEST MODE</span>
+      <button id="leaderboardNav" class="toolbar-btn" type="button">RANKINGS</button>
+      <button id="accountNav" class="toolbar-btn" type="button">ACCOUNT</button>
+    </nav>
+
+    <section id="account-panel" class="app-panel" aria-labelledby="accountTitle">
+      <div class="panel-card">
+        <button id="closeAccount" class="panel-close" type="button" aria-label="Close account">×</button>
+        <h2 id="accountTitle">PLAYER LINK</h2>
+        <div id="authForms">
+          <form id="loginForm" class="auth-form">
+            <h3>LOG IN</h3>
+            <label>Email <input name="email" type="email" autocomplete="email" required></label>
+            <label>Password <input name="password" type="password" autocomplete="current-password" minlength="8" required></label>
+            <button class="neon-btn" type="submit">CONNECT</button>
+          </form>
+          <form id="registerForm" class="auth-form">
+            <h3>CREATE ID</h3>
+            <label>Display name <input name="displayName" maxlength="20" pattern="[A-Za-z0-9 _-]{1,20}" required></label>
+            <label>Email <input name="email" type="email" autocomplete="email" required></label>
+            <label>Password <input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
+            <button class="neon-btn" type="submit">REGISTER</button>
+          </form>
+        </div>
+        <div id="profileView" class="hidden">
+          <p>IDENTITY: <strong id="profileName"></strong></p>
+          <h3>RECENT RUNS</h3>
+          <div id="personalScores">Sign in to sync your runs.</div>
+          <button id="logoutBtn" class="neon-btn" type="button">LOG OUT</button>
+        </div>
+        <p id="authMessage" class="panel-message" role="status"></p>
+      </div>
+    </section>
+
+    <section id="leaderboard-panel" class="app-panel" aria-labelledby="leaderboardTitle">
+      <div class="panel-card leaderboard-card">
+        <button id="closeLeaderboard" class="panel-close" type="button" aria-label="Close rankings">×</button>
+        <h2 id="leaderboardTitle">GLOBAL RANKINGS</h2>
+        <div class="leaderboard-head"><span>#</span><span>RUNNER</span><span>SCORE</span><span>DATE</span></div>
+        <div id="leaderboardBody" aria-live="polite"></div>
+        <p id="leaderboardStatus" class="panel-message" role="status">READY</p>
+        <button id="leaderboardRetry" class="neon-btn hidden" type="button">RETRY</button>
+        <div class="pager"><button id="leaderboardPrev" class="toolbar-btn" type="button">← PREV</button><button id="leaderboardNext" class="toolbar-btn" type="button">NEXT →</button></div>
+        <small class="polling-note">AUTO-REFRESH: 30S POLLING</small>
+      </div>
+    </section>
+
     <!-- Mobile controls overlay -->
     <div id="mobile-controls">
       <button id="btn-jump" class="mobile-btn">JUMP</button>
@@ -28,9 +76,10 @@
     <div id="name-input-overlay" style="display:none">
       <div id="name-input-panel">
         <h3>ENTER YOUR NAME</h3>
-        <input type="text" id="playerName" maxlength="20" placeholder="PLAYER">
+        <input type="text" id="playerName" maxlength="20" placeholder="PLAYER" aria-label="Display name for score">
         <button id="submitScoreBtn" class="neon-btn">SUBMIT</button>
         <button id="skipSubmitBtn" class="neon-btn">SKIP</button>
+        <p id="score-submit-status" class="panel-message" role="status"></p>
       </div>
     </div>
 
@@ -51,6 +100,7 @@
   <script src="/js/achievements.js"></script>
   <script src="/js/ui.js"></script>
   <script src="/js/api.js"></script>
+  <script src="/js/account.js"></script>
   <script src="/js/rendering/coordinates.js"></script>
   <script src="/js/rendering/animation-map.js"></script>
   <script src="/js/rendering/model-loader.js"></script>

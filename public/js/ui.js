@@ -24,7 +24,8 @@ class UI {
 
   async _loadLeaderboard() {
     this.leaderboardLoading = true;
-    this.leaderboardData = await window.API.getLeaderboard(10);
+    const data = await window.API.getLeaderboard(1, 10);
+    this.leaderboardData = data?.entries || [];
     this.leaderboardLoading = false;
   }
 

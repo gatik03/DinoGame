@@ -3,8 +3,9 @@ const router = express.Router();
 const Score = require('../models/Score');
 const Player = require('../models/Player');
 const { validateLeaderboardQuery, handleValidationErrors } = require('../middleware/validator');
+const { optionalAuth } = require('../middleware/auth');
 
-router.get('/', validateLeaderboardQuery, handleValidationErrors, (req, res) => {
+router.get('/', optionalAuth, validateLeaderboardQuery, handleValidationErrors, (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
     const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -20,6 +21,7 @@ router.get('/', validateLeaderboardQuery, handleValidationErrors, (req, res) => 
       page,
       pageSize,
       total: leaderboard.total,
+      myRank: req.user ? Score.getUserRank(req.user.id) : null,
     });
   } catch (err) {
     console.error('Leaderboard error:', err);
