@@ -213,6 +213,102 @@ describe('GET /api/players/:id', () => {
   });
 });
 
+// ─── Game sessions, accounts, and paginated leaderboard ──────────────────────
+
+describe('Game sessions and account foundation', () => {
+  test('creates and finishes a guest session once', async () => {
+    const created = await request(app).post('/api/game-sessions').send({});
+    expect(created.status).toBe(201);
+    expect(created.body.sessionToken).toMatch(/^[a-f0-9]{64}$/);
+
+    const finished = await request(app).post(`/api/game-sessions/${created.body.id}/finish`).send({
+      sessionToken: created.body.sessionToken,
+      score: 100,
+      durationMs: 10000,
+      displayName: 'Guest Tester',
+    });
+    expect(finished.status).toBe(200);
+    expect(finished.body.validationStatus).toBe('valid');
+
+    const duplicate = await request(app).post(`/api/game-sessions/${created.body.id}/finish`).send({
+      sessionToken: created.body.sessionToken, score: 100, durationMs: 10000,
+    });
+    expect(duplicate.status).toBe(409);
+  });
+
+  test('rejects unknown sessions, invalid scores, and implausible durations', async () => {
+    const unknown = await request(app).post('/api/game-sessions/999999/finish').send({
+      sessionToken: 'a'.repeat(64), score: 1, durationMs: 1000,
+    });
+    expect(unknown.status).toBe(404);
+
+    const malformed = await request(app).post('/api/game-sessions/999999/finish').send({
+      sessionToken: { token: 'not-a-token' }, score: 1, durationMs: 1000,
+    });
+    expect(malformed.status).toBe(404);
+
+    const created = await request(app).post('/api/game-sessions').send({});
+    const negative = await request(app).post(`/api/game-sessions/${created.body.id}/finish`).send({
+      sessionToken: created.body.sessionToken, score: -1, durationMs: 10000,
+    });
+    expect(negative.status).toBe(400);
+
+    const short = await request(app).post(`/api/game-sessions/${created.body.id}/finish`).send({
+      sessionToken: created.body.sessionToken, score: 1, durationMs: 10,
+    });
+    expect(short.status).toBe(400);
+
+    const fabricatedDuration = await request(app).post(`/api/game-sessions/${created.body.id}/finish`).send({
+      sessionToken: created.body.sessionToken, score: 1, durationMs: 60 * 60 * 1000,
+    });
+    expect(fabricatedDuration.status).toBe(400);
+  });
+
+  test('supports account registration, login, ownership, and private scores', async () => {
+    const email = `phase3-${Date.now()}@example.test`;
+    const registered = await request(app).post('/api/users/register').send({
+      displayName: 'Account Tester', email, password: 'secure-pass-123',
+    });
+    expect(registered.status).toBe(201);
+    expect(registered.body.user.email).toBe(email);
+
+    const login = await request(app).post('/api/users/login').send({ email, password: 'secure-pass-123' });
+    expect(login.status).toBe(200);
+    const token = login.body.token;
+    const session = await request(app).post('/api/game-sessions').set('Authorization', `Bearer ${token}`);
+    expect(session.status).toBe(201);
+
+    const ownership = await request(app)
+      .post(`/api/game-sessions/${session.body.id}/finish`)
+      .send({ sessionToken: session.body.sessionToken, score: 100, durationMs: 10000, displayName: 'Account Tester' });
+    expect(ownership.status).toBe(403);
+
+    const finished = await request(app)
+      .post(`/api/game-sessions/${session.body.id}/finish`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ sessionToken: session.body.sessionToken, score: 100, durationMs: 10000, displayName: 'Account Tester' });
+    expect(finished.status).toBe(200);
+
+    const me = await request(app).get('/api/users/me').set('Authorization', `Bearer ${token}`);
+    expect(me.status).toBe(200);
+    expect(me.body.user.email).toBe(email);
+    const scores = await request(app).get('/api/users/me/scores').set('Authorization', `Bearer ${token}`);
+    expect(scores.status).toBe(200);
+    expect(Array.isArray(scores.body.scores)).toBe(true);
+    expect(scores.body.scores).toHaveLength(1);
+  });
+
+  test('leaderboard exposes stable paginated entries without emails', async () => {
+    const res = await request(app).get('/api/leaderboard?page=1&pageSize=2');
+    expect(res.status).toBe(200);
+    expect(res.body.page).toBe(1);
+    expect(res.body.pageSize).toBe(2);
+    expect(Array.isArray(res.body.entries)).toBe(true);
+    expect(res.body.entries.length).toBeLessThanOrEqual(2);
+    expect(res.body.entries[0]).not.toHaveProperty('email');
+  });
+});
+
 // ─── Rate limiting ────────────────────────────────────────────────────────────
 
 describe('Rate limiting on POST /api/score', () => {

@@ -26,6 +26,7 @@ global.CONFIG = {
     HEIGHT: 44,
     SLIDE_HEIGHT: 22,
     DASH_DURATION: 18,
+    DASH_SPEED: 10,
     DASH_COOLDOWN: 150,
     ENERGY_MAX: 100,
     ENERGY_REGEN: 0.25,
@@ -91,10 +92,20 @@ global.Utils = {
   distanceSq: (ax, ay, bx, by) => (bx - ax) ** 2 + (by - ay) ** 2,
 };
 
+// game.js only registers its bootstrap callback at module load time.
+global.document = { addEventListener: () => {} };
+
 // Load game source files that define Player, ObstacleManager, AchievementSystem
 require('../public/js/player.js');
 require('../public/js/obstacles.js');
 require('../public/js/achievements.js');
+require('../public/js/game.js');
+require('../public/js/rendering/coordinates.js');
+require('../public/js/rendering/animation-map.js');
+require('../public/js/rendering/model-loader.js');
+require('../public/js/rendering/fallbacks.js');
+require('../public/js/rendering/scene.js');
+require('../public/js/rendering/renderer.js');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Score calculation
@@ -340,6 +351,100 @@ describe('Player physics', () => {
     const hb = player.getHitbox();
     expect(hb.h).toBe(CONFIG.PLAYER.SLIDE_HEIGHT);
   });
+
+  test('left and right Shift events are recognized as dash keys', () => {
+    expect(isDashKey({ key: 'Shift', code: 'ShiftLeft' })).toBe(true);
+    expect(isDashKey({ key: 'Shift', code: 'ShiftRight' })).toBe(true);
+  });
+
+  test('dash moves the player visibly and starts only once while active', () => {
+    expect(player.startDash()).toBe(true);
+    const xBeforeUpdate = player.x;
+
+    player.update(5);
+
+    expect(player.x).toBeGreaterThan(xBeforeUpdate);
+    expect(player.startDash()).toBe(false);
+  });
+
+  test('dash ends after its deterministic duration without snapping back', () => {
+    player.startDash();
+
+    for (let i = 0; i < CONFIG.PLAYER.DASH_DURATION; i++) player.update(5);
+
+    expect(player.isDashing).toBe(false);
+    expect(player.dashTimer).toBe(0);
+    expect(player.x).toBeGreaterThan(CONFIG.PLAYER.X);
+    const postDashX = player.x;
+    player.update(5);
+    expect(player.x).toBe(postDashX);
+  });
+
+  test('authoritative hitbox follows the post-dash position', () => {
+    player.startDash();
+    for (let i = 0; i < CONFIG.PLAYER.DASH_DURATION; i++) player.update(5);
+
+    const hitbox = player.getHitbox();
+
+    expect(hitbox.x).toBe(player.x - player.width / 2);
+    expect(hitbox.x).toBeGreaterThan(CONFIG.PLAYER.X - player.width / 2);
+  });
+
+  test('dash cooldown prevents immediate retriggering', () => {
+    player.startDash();
+
+    expect(player.startDash()).toBe(false);
+    expect(player.dashCooldown).toBeGreaterThan(0);
+  });
+
+  test('releasing Shift does not cancel an active dash', () => {
+    player.startDash();
+    // keyup only releases input state in game.js; it must not mutate Player.
+    expect(player.isDashing).toBe(true);
+    player.update(5);
+    expect(player.isDashing).toBe(true);
+  });
+
+  test('dashing while ducking preserves the low hitbox', () => {
+    player.slide();
+    expect(player.startDash()).toBe(true);
+
+    expect(player.isSliding).toBe(true);
+    expect(player.getHitbox().h).toBe(CONFIG.PLAYER.SLIDE_HEIGHT);
+  });
+
+  test('jumping and ducking remain available after a dash completes', () => {
+    player.startDash();
+    for (let i = 0; i < CONFIG.PLAYER.DASH_DURATION; i++) player.update(5);
+
+    expect(player.jump()).toBe(true);
+    for (let i = 0; i < 60; i++) player.update(5);
+    expect(player.onGround).toBe(true);
+    expect(player.slide()).toBe(true);
+    expect(player.getHitbox().h).toBe(CONFIG.PLAYER.SLIDE_HEIGHT);
+  });
+
+  test('normal updates continue from the post-dash position', () => {
+    player.startDash();
+    for (let i = 0; i < CONFIG.PLAYER.DASH_DURATION; i++) player.update(5);
+    const postDashX = player.x;
+
+    player.update(5);
+
+    expect(player.x).toBe(postDashX);
+  });
+
+  test('reset clears dash state, movement, and cooldown', () => {
+    player.startDash();
+    player.update(5);
+    player.reset();
+
+    expect(player.isDashing).toBe(false);
+    expect(player.dashTimer).toBe(0);
+    expect(player.dashCooldown).toBe(0);
+    expect(player.dashVelocity).toBe(0);
+    expect(player.x).toBe(CONFIG.PLAYER.X);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -389,7 +494,94 @@ describe('Collision detection (Utils.rectOverlap)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 5. Achievement unlocking
+// 5. Obstacle spawning and lifecycle
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('ObstacleManager', () => {
+  let manager;
+
+  beforeEach(() => {
+    manager = new ObstacleManager();
+  });
+
+  test('spawns an obstacle at the right edge', () => {
+    manager._spawnObstacle(CONFIG.GAME.INITIAL_SPEED, 0);
+
+    expect(manager.obstacles).toHaveLength(1);
+    expect(manager.obstacles[0].x).toBe(CONFIG.CANVAS.WIDTH + 60);
+  });
+
+  test('continues spawning after the first obstacle has moved', () => {
+    manager._spawnObstacle(CONFIG.GAME.INITIAL_SPEED, 0);
+    manager.obstacles[0].x -= 400;
+
+    manager._spawnObstacle(CONFIG.GAME.INITIAL_SPEED, 0);
+
+    expect(manager.obstacles).toHaveLength(2);
+  });
+
+  test('removes obstacles after they leave the canvas', () => {
+    manager._spawnObstacle(CONFIG.GAME.INITIAL_SPEED, 0);
+    manager.obstacles[0].x = -CONFIG.CANVAS.WIDTH;
+
+    manager.update(CONFIG.GAME.INITIAL_SPEED, 0, 16);
+
+    expect(manager.obstacles).toHaveLength(0);
+  });
+
+  test('returns collision boxes for active obstacles', () => {
+    manager._spawnObstacle(CONFIG.GAME.INITIAL_SPEED, 0);
+
+    const [hitbox] = manager.getHitboxes();
+
+    expect(hitbox).toEqual(expect.objectContaining({
+      x: manager.obstacles[0].x,
+      y: manager.obstacles[0].y,
+      w: manager.obstacles[0].w,
+      h: manager.obstacles[0].h,
+    }));
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 6. Optional 2.5D rendering adapters
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('2.5D rendering adapters', () => {
+  test('converts gameplay coordinates onto the fixed Z=0 plane', () => {
+    expect(gameplayToWorld(100, 200)).toEqual({ x: 1, y: -2, z: 0 });
+  });
+
+  test('maps gameplay states to model animation names', () => {
+    expect(playerStateToAnimation('running')).toBe('run');
+    expect(playerStateToAnimation('sliding')).toBe('duck');
+    expect(playerStateToAnimation('dashing')).toBe('roll');
+    expect(playerStateToAnimation('dead')).toBe('death');
+  });
+
+  test('selects Canvas fallback when Three.js is unavailable', () => {
+    const renderer = new NeonRenderer({ parentElement: {} });
+
+    expect(renderer.enabled).toBe(false);
+  });
+
+  test('renderer adapter does not change gameplay coordinates in fallback mode', () => {
+    const renderer = new NeonRenderer({ parentElement: {} });
+    const state = {
+      player: { x: 290, y: 252, width: 28, height: 44, state: 'dashing' },
+      obstacles: [{ id: 1, x: 500, y: 220, width: 38, height: 28, type: 'ground' }],
+      gameState: 'playing',
+    };
+
+    renderer.render(state);
+
+    expect(state.player.x).toBe(290);
+    expect(state.obstacles[0].x).toBe(500);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 7. Achievement unlocking
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('AchievementSystem', () => {

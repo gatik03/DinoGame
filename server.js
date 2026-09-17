@@ -12,6 +12,8 @@ const scoresRouter = require('./routes/scores');
 const leaderboardRouter = require('./routes/leaderboard');
 const statsRouter = require('./routes/stats');
 const playersRouter = require('./routes/players');
+const gameSessionsRouter = require('./routes/gameSessions');
+const usersRouter = require('./routes/users');
 
 // Initialize database before anything else
 initDatabase();
@@ -19,7 +21,15 @@ initDatabase();
 const app = express();
 
 // ── Security & utility middleware ──────────────────────────────────────────────
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      // The import map is static and explicitly hash-approved; all other
+      // executable code is served from this origin.
+      scriptSrc: ["'self'", "'sha256-lmhS+hS+/jvBzpQH7kzsIdRYKltDJFkeWCHqEdv5wtA='"],
+    },
+  },
+}));
 app.use(cors());
 app.use(compression());
 app.use(morgan('combined'));
@@ -32,6 +42,10 @@ app.use(express.urlencoded({ extended: false }));
 app.use(generalLimiter);
 
 // ── Static files ───────────────────────────────────────────────────────────────
+// Serve installed Three.js modules locally; model loading remains independent
+// and can safely fall back when its loader/assets are unavailable.
+app.use('/vendor/three/build', express.static(path.join(__dirname, 'node_modules/three/build')));
+app.use('/vendor/three/examples', express.static(path.join(__dirname, 'node_modules/three/examples')));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── API Routes ─────────────────────────────────────────────────────────────────
@@ -40,9 +54,15 @@ app.use('/api/score', scoreLimiter, scoresRouter);
 app.use('/api/leaderboard', leaderboardRouter);
 app.use('/api/stats', statsRouter);
 app.use('/api/players', playersRouter);
+app.use('/api/game-sessions', gameSessionsRouter);
+app.use('/api/users', usersRouter);
 
 // ── Health check ───────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 

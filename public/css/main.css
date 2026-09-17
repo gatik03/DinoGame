@@ -68,6 +68,15 @@ body::after {
     0 0 80px rgba(0, 255, 255, 0.1);
 }
 
+#three-layer {
+  position: absolute;
+  display: block;
+  width: min(100%, 900px);
+  height: 300px;
+  pointer-events: none;
+  z-index: 1;
+}
+
 /* 4. Mobile Controls
    ============================================================ */
 #mobile-controls {

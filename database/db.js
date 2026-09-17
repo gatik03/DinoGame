@@ -3,7 +3,12 @@ const path = require('path');
 const fs = require('fs');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
-const DB_PATH = path.join(DATA_DIR, 'neon-runner.db');
+const DB_PATH = process.env.DB_PATH
+  ? path.resolve(process.env.DB_PATH)
+  : path.join(DATA_DIR, 'neon-runner.db');
+
+const configuredDir = path.dirname(DB_PATH);
+if (!fs.existsSync(configuredDir)) fs.mkdirSync(configuredDir, { recursive: true });
 
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -43,6 +48,39 @@ function initDatabase() {
       FOREIGN KEY (player_id) REFERENCES players(id)
     );
 
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      display_name TEXT NOT NULL,
+      email TEXT UNIQUE,
+      password_hash TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS game_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      session_token_hash TEXT NOT NULL UNIQUE,
+      started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      ended_at DATETIME,
+      status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'finished', 'rejected')),
+      initial_speed REAL NOT NULL DEFAULT 5,
+      final_score INTEGER,
+      duration_ms INTEGER,
+      validation_status TEXT NOT NULL DEFAULT 'valid' CHECK (validation_status IN ('valid', 'suspicious', 'rejected')),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS auth_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      token_hash TEXT NOT NULL UNIQUE,
+      expires_at DATETIME NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS game_stats (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       total_games INTEGER DEFAULT 0,
@@ -53,6 +91,30 @@ function initDatabase() {
       obstacles_avoided INTEGER DEFAULT 0,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+  `);
+
+  // Add session/validation fields to databases created by earlier versions.
+  const columns = db.prepare('PRAGMA table_info(scores)').all().map((column) => column.name);
+  const migrations = [
+    ['game_session_id', 'INTEGER'],
+    ['user_id', 'INTEGER'],
+    ['duration_ms', 'INTEGER DEFAULT 0'],
+    ['validation_status', "TEXT NOT NULL DEFAULT 'valid'"],
+    ['suspicious', 'INTEGER NOT NULL DEFAULT 0'],
+  ];
+  for (const [name, definition] of migrations) {
+    if (!columns.includes(name)) db.exec(`ALTER TABLE scores ADD COLUMN ${name} ${definition}`);
+  }
+
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_scores_score_created ON scores (score DESC, created_at ASC, id ASC);
+    CREATE INDEX IF NOT EXISTS idx_scores_player_id ON scores (player_id);
+    CREATE INDEX IF NOT EXISTS idx_scores_user_id ON scores (user_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_scores_one_per_session ON scores (game_session_id) WHERE game_session_id IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS idx_game_sessions_user_id ON game_sessions (user_id);
+    CREATE INDEX IF NOT EXISTS idx_game_sessions_status ON game_sessions (status);
+    CREATE INDEX IF NOT EXISTS idx_game_sessions_token_hash ON game_sessions (session_token_hash);
+    CREATE INDEX IF NOT EXISTS idx_auth_tokens_hash ON auth_tokens (token_hash);
   `);
 
   // Insert initial game_stats row if none exists

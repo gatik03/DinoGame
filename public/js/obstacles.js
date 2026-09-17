@@ -6,12 +6,14 @@ class ObstacleManager {
     this.spawnTimer = 0;
     this.spawnInterval = 110;
     this.lastObstacleRightEdge = 0;
+    this.nextObstacleId = 1;
   }
 
   reset() {
     this.obstacles = [];
     this.spawnTimer = 0;
     this.lastObstacleRightEdge = 0;
+    this.nextObstacleId = 1;
   }
 
   _getDifficulty(score) {
@@ -28,8 +30,16 @@ class ObstacleManager {
     const type = Utils.randomChoice(diff.types);
     const startX = CONFIG.CANVAS.WIDTH + 60;
 
-    // Ensure minimum gap from last obstacle
-    if (startX < this.lastObstacleRightEdge + diff.minGap) return;
+    // The spawn point is fixed at the right edge of the canvas. Compare it to
+    // the current position of the rightmost active obstacle, not to the edge
+    // recorded when that obstacle was created. Using the recorded value here
+    // permanently blocks every spawn after the first one because the recorded
+    // edge never moves with the obstacle.
+    const rightmostObstacleEdge = this.obstacles.reduce(
+      (rightEdge, obstacle) => Math.max(rightEdge, obstacle.x + (obstacle.w || 12)),
+      -Infinity,
+    );
+    if (startX < rightmostObstacleEdge + diff.minGap) return;
 
     let obs;
     switch (type) {
@@ -50,6 +60,7 @@ class ObstacleManager {
     }
 
     if (obs) {
+      obs.id = this.nextObstacleId++;
       this.obstacles.push(obs);
       this.lastObstacleRightEdge = startX + (obs.w || 12) + 20;
     }
@@ -158,6 +169,15 @@ class ObstacleManager {
         case 'block': this._drawMovingBlock(ctx, obs); break;
         case 'laser': this._drawLaserBarrier(ctx, obs); break;
       }
+      ctx.restore();
+    }
+  }
+
+  drawLaser(ctx) {
+    for (const obs of this.obstacles) {
+      if (obs.type !== 'laser') continue;
+      ctx.save();
+      this._drawLaserBarrier(ctx, obs);
       ctx.restore();
     }
   }

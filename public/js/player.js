@@ -17,6 +17,7 @@ class Player {
     this.energy = CONFIG.PLAYER.ENERGY_MAX;
     this.dashCooldown = 0;
     this.dashTimer = 0;
+    this.dashVelocity = 0;
     this.isDashing = false;
     this.slideTimer = 0;
     this.isSliding = false;
@@ -56,13 +57,18 @@ class Player {
       this.vy = 0;
       this.onGround = true;
       this.jumpCount = 0;
-      if (this.isDashing) {
-        this.isDashing = false;
-        this.dashTimer = 0;
-      }
       if (!this.isSliding) {
         this.state = 'running';
       }
+    }
+
+    // The player is normally anchored on the track. Apply the dash impulse
+    // separately so regular movement cannot overwrite its visible motion.
+    if (this.isDashing) {
+      this.x = Math.min(
+        CONFIG.CANVAS.WIDTH - this.width / 2,
+        this.x + this.dashVelocity,
+      );
     }
 
     // Slide timer
@@ -79,6 +85,8 @@ class Player {
       this.dashTimer--;
       if (this.dashTimer <= 0) {
         this.isDashing = false;
+        this.dashVelocity = 0;
+        if (this.onGround) this.state = this.isSliding ? 'sliding' : 'running';
       }
     }
 
@@ -145,16 +153,26 @@ class Player {
     return true;
   }
 
-  dash() {
-    if (this.dead || this.isDashing || this.dashCooldown > 0) return false;
-    if (this.energy < CONFIG.PLAYER.ENERGY_DASH_COST) return false;
+  canDash() {
+    return !this.dead && !this.isDashing && this.dashCooldown <= 0 &&
+      this.energy >= CONFIG.PLAYER.ENERGY_DASH_COST;
+  }
+
+  startDash() {
+    if (!this.canDash()) return false;
     this.isDashing = true;
     this.dashTimer = CONFIG.PLAYER.DASH_DURATION;
+    this.dashVelocity = CONFIG.PLAYER.DASH_SPEED || 10;
     this.dashCooldown = CONFIG.PLAYER.DASH_COOLDOWN;
     this.energy -= CONFIG.PLAYER.ENERGY_DASH_COST;
     this.dashFlash = 12;
     this.state = 'dashing';
     return true;
+  }
+
+  // Preserve the existing action API used by game and mobile controls.
+  dash() {
+    return this.startDash();
   }
 
   activateShield() {

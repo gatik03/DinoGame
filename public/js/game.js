@@ -1,5 +1,9 @@
 'use strict';
 
+function isDashKey(event) {
+  return event.key === 'Shift' || event.code === 'ShiftLeft' || event.code === 'ShiftRight';
+}
+
 class Game {
   constructor() {
     this.canvas = null;
@@ -17,6 +21,9 @@ class Game {
     this.achievements = null;
     this.audio = null;
     this.ui = null;
+    this.visualRenderer = null;
+    this.gameSession = null;
+    this.gameSessionPromise = null;
 
     this.score = 0;
     this.highScore = 0;
@@ -53,6 +60,7 @@ class Game {
 
     this._resizeCanvas();
     this.ctx = this.canvas.getContext('2d');
+    this.visualRenderer = new NeonRenderer(this.canvas);
 
     this.audio           = new AudioSystem();
     this.particles       = new ParticleSystem();
@@ -91,15 +99,23 @@ class Game {
       this.canvas.style.height = `${maxH}px`;
     }
     this._scale = scale;
+    if (this.visualRenderer) this.visualRenderer.resize(maxW, maxH);
   }
 
   // ─── Input ────────────────────────────────────────────────────────────────
 
   _setupInput() {
     document.addEventListener('keydown', (e) => {
-      if (this.keys[e.code]) return;
-      this.keys[e.code] = true;
+      const keyId = e.code || e.key;
+      if (this.keys[keyId] || e.repeat) return;
+      this.keys[keyId] = true;
       this.audio.unlock();
+
+      if (isDashKey(e)) {
+        e.preventDefault();
+        if (this.state === 'playing') this._tryDash();
+        return;
+      }
 
       switch (e.code) {
         case 'Space':
@@ -117,11 +133,6 @@ class Game {
           e.preventDefault();
           if (this.state === 'playing') this._trySlide();
           break;
-        case 'ShiftLeft':
-        case 'ShiftRight':
-          e.preventDefault();
-          if (this.state === 'playing') this._tryDash();
-          break;
         case 'KeyP':
         case 'Escape':
           e.preventDefault();
@@ -131,7 +142,9 @@ class Game {
       }
     });
 
-    document.addEventListener('keyup', (e) => { this.keys[e.code] = false; });
+    document.addEventListener('keyup', (e) => {
+      this.keys[e.code || e.key] = false;
+    });
 
     this.canvas.addEventListener('click', (e) => {
       this.audio.unlock();
@@ -246,7 +259,22 @@ class Game {
       death_reason:      this.deathReason || 'unknown',
       powerups_collected: this.powerupManager ? this.powerupManager.totalCollected : 0,
     };
-    const result = await window.API.submitScore(name, Math.floor(this.score), stats);
+    let result;
+    if (this.gameSession) {
+      const sessionResult = await window.API.finishGameSession(
+        this.gameSession,
+        Math.floor(this.score),
+        Math.max(1000, Date.now() - this.startTime),
+        name,
+      );
+      // Only fall back when the session request failed at the transport layer.
+      // HTTP validation/conflict responses must not create a second score.
+      result = sessionResult === null
+        ? await window.API.submitScore(name, Math.floor(this.score), stats)
+        : sessionResult;
+    } else {
+      result = await window.API.submitScore(name, Math.floor(this.score), stats);
+    }
     if (result && result.success) {
       console.log(`Score saved! Rank #${result.rank}`);
     }
@@ -268,6 +296,9 @@ class Game {
     this.gotHit           = false;
     this.noHitScore       = 0;
     this.startTime        = Date.now();
+    this.gameSession = null;
+    this.gameSessionPromise = window.API.createGameSession()
+      .then((session) => { this.gameSession = session; return session; });
 
     this.player.reset();
     this.obstacleManager.reset();
@@ -453,6 +484,29 @@ class Game {
     };
   }
 
+  _getRenderState() {
+    return {
+      player: {
+        x: this.player.x,
+        y: this.player.y,
+        width: this.player.width,
+        height: this.player.height,
+        state: this.player.state,
+      },
+      obstacles: this.obstacleManager.obstacles.map((obstacle) => ({
+        id: obstacle.id,
+        x: obstacle.x,
+        y: obstacle.y,
+        width: obstacle.w || 10,
+        height: obstacle.h || 10,
+        type: obstacle.type,
+      })),
+      score: Math.floor(this.score),
+      speed: this.gameSpeed,
+      gameState: this.state,
+    };
+  }
+
   _draw() {
     const ctx = this.ctx;
     const W = CONFIG.CANVAS.WIDTH;
@@ -469,13 +523,16 @@ class Game {
     this.background.draw(ctx);
 
     if (this.state !== 'menu') {
-      this.obstacleManager.draw(ctx);
+      if (!this.visualRenderer?.enabled) this.obstacleManager.draw(ctx);
+      else this.obstacleManager.drawLaser(ctx);
       this.powerupManager.draw(ctx);
       this.bossManager.draw(ctx);
-      this.player.draw(ctx, this.particles);
+      if (!this.visualRenderer?.enabled) this.player.draw(ctx, this.particles);
       this.particles.draw(ctx);
       this.achievements.draw(ctx);
     }
+
+    this.visualRenderer?.render(this._getRenderState());
 
     const gs = this._getGameState();
     this.ui.update(gs);
@@ -500,3 +557,5 @@ document.addEventListener('DOMContentLoaded', () => {
   window.gameInstance = new Game();
   window.gameInstance.init('gameCanvas');
 });
+
+window.isDashKey = isDashKey;

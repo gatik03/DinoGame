@@ -3,6 +3,7 @@ const router = express.Router();
 const Player = require('../models/Player');
 const Score = require('../models/Score');
 const GameStats = require('../models/GameStats');
+const { GameSession } = require('../models/GameSession');
 const { scoreLimiter } = require('../middleware/rateLimiter');
 const { validateScore, handleValidationErrors } = require('../middleware/validator');
 
@@ -10,6 +11,15 @@ router.post('/', scoreLimiter, validateScore, handleValidationErrors, (req, res)
   try {
     const { playerName, score, stats = {} } = req.body;
     const sanitizedName = playerName.trim().toUpperCase();
+    // Preserve the legacy endpoint while ensuring every persisted score has
+    // a server-created session association.
+    const legacySession = GameSession.create();
+    const durationMs = Math.floor((stats.playtime_seconds || 0) * 1000);
+    const suspicious = Math.floor(score) > Math.max(30, Math.ceil(durationMs / 1000) * 30);
+    const validationStatus = suspicious ? 'suspicious' : 'valid';
+    GameSession.finish(legacySession.id, {
+      status: 'finished', score: Math.floor(score), durationMs, validationStatus,
+    });
 
     // Find or create player
     const player = Player.create(sanitizedName);
@@ -28,6 +38,10 @@ router.post('/', scoreLimiter, validateScore, handleValidationErrors, (req, res)
       obstacles_avoided: Math.floor(stats.obstacles_avoided || 0),
       death_reason: stats.death_reason || null,
       powerups_collected: Math.floor(stats.powerups_collected || 0),
+      game_session_id: legacySession.id,
+      duration_ms: durationMs,
+      validation_status: validationStatus,
+      suspicious: suspicious ? 1 : 0,
     });
 
     // Update player aggregate stats

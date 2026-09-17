@@ -3,6 +3,30 @@
 window.API = {
   BASE_URL: '',
 
+  async createGameSession() {
+    try {
+      const res = await fetch(`${this.BASE_URL}/api/game-sessions`, { method: 'POST' });
+      return res.ok ? await res.json() : null;
+    } catch (e) {
+      console.warn('Game session creation failed:', e);
+      return null;
+    }
+  },
+
+  async finishGameSession(session, score, durationMs, displayName) {
+    if (!session?.id || !session.sessionToken) return null;
+    try {
+      const res = await fetch(`${this.BASE_URL}/api/game-sessions/${session.id}/finish`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionToken: session.sessionToken, score: Math.floor(score), durationMs, displayName }),
+      });
+      return res.ok ? await res.json() : { success: false, status: res.status };
+    } catch (e) {
+      console.warn('Game session finish failed:', e);
+      return null;
+    }
+  },
+
   async submitScore(playerName, score, stats) {
     try {
       const res = await fetch(`${this.BASE_URL}/api/score`, {
@@ -27,7 +51,7 @@ window.API = {
       const res = await fetch(`${this.BASE_URL}/api/leaderboard?limit=${limit}`);
       if (!res.ok) return [];
       const data = await res.json();
-      return data.scores || [];
+      return data.entries || data.scores || [];
     } catch (e) {
       console.warn('Leaderboard fetch error:', e);
       return [];
