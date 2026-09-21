@@ -552,6 +552,23 @@ describe('2.5D rendering adapters', () => {
     expect(gameplayToWorld(100, 200)).toEqual({ x: 1, y: -2, z: 0 });
   });
 
+  test('preserves the orthographic logical-world corner invariant', () => {
+    const topLeft = gameplayToWorld(0, 0);
+    expect(topLeft.x).toBe(0);
+    expect(topLeft.y).toBeCloseTo(0);
+    expect(topLeft.z).toBe(0);
+    expect(gameplayToWorld(CONFIG.CANVAS.WIDTH, CONFIG.CANVAS.HEIGHT)).toEqual({
+      x: 9,
+      y: -3,
+      z: 0,
+    });
+    expect(gameplayToWorld(110, CONFIG.CANVAS.GROUND_Y)).toEqual({
+      x: 1.1,
+      y: -2.52,
+      z: 0,
+    });
+  });
+
   test.each([
     [1920, 1080, 1, 900, 300],
     [1366, 768, 1.5, 900, 300],

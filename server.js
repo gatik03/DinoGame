@@ -103,6 +103,7 @@ const PORT = process.env.PORT || 3000;
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`Neon Runner server running on port ${PORT}`);
+    console.log(`Game: http://localhost:${PORT}`);
   });
 }
 

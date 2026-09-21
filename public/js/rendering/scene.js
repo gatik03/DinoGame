@@ -5,9 +5,11 @@ class NeonScene {
     this.THREE = THREE;
     this.host = host;
     this.scene = new THREE.Scene();
+    // The frustum is the logical world: x=0/y=0 is its top-left corner.
+    // Keep the camera at that same origin so it adds no gameplay translation.
     this.camera = new THREE.OrthographicCamera(0, 9, 0, -3, 0.1, 100);
-    this.camera.position.set(4.5, -1.5, 10);
-    this.camera.lookAt(4.5, -1.5, 0);
+    this.camera.position.set(0, 0, 10);
+    this.camera.lookAt(0, 0, 0);
     this.renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     this.renderer.setClearColor(0x000000, 0);

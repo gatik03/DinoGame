@@ -28,7 +28,7 @@ class NeonRenderer {
       this.scene.scene.add(this.playerMesh);
       if (this.debug) {
         this.debugLabel = document.createElement('div');
-        this.debugLabel.style.cssText = 'position:absolute;top:6px;left:6px;color:#ffff00;font:11px monospace;z-index:2;pointer-events:none';
+        this.debugLabel.style.cssText = 'position:absolute;top:6px;left:6px;color:#ffff00;font:11px monospace;line-height:1.25;white-space:pre;z-index:2;pointer-events:none';
         this.host.appendChild(this.debugLabel);
       }
       this._loadPlayerModel();
@@ -91,7 +91,26 @@ class NeonRenderer {
     this.playerMesh.visible = state.gameState !== 'menu' && state.gameState !== 'gameover';
     this.playerMesh.scale.y = player.state === 'sliding' ? 0.5 : 1;
     if (this.debugLabel) {
-      this.debugLabel.textContent = `P ${player.x.toFixed(1)},${player.y.toFixed(1)} | obstacles ${state.obstacles.length}`;
+      const playerPoint = gameplayToWorld(player.x, player.y);
+      const camera = this.scene.camera;
+      const rect = this.canvas.getBoundingClientRect();
+      const firstObstacle = state.obstacles[0];
+      const obstaclePoint = firstObstacle
+        ? gameplayToWorld(firstObstacle.x + firstObstacle.width / 2, firstObstacle.y + firstObstacle.height)
+        : null;
+      this.debugLabel.textContent = [
+        'RENDER DEBUG',
+        `GAME logical: ${CONFIG.CANVAS.WIDTH}x${CONFIG.CANVAS.HEIGHT}  GROUND_Y: ${CONFIG.CANVAS.GROUND_Y}`,
+        `PLAYER x: ${player.x.toFixed(1)} y: ${player.y.toFixed(1)} w: ${player.width} h: ${player.height} bottom: ${(player.y).toFixed(1)}`,
+        `CANVAS topY: ${(player.y - player.height).toFixed(1)} feetY: ${player.y.toFixed(1)} renderer: ${this.enabled ? 'hidden (Three overlay)' : 'Canvas'}`,
+        `THREE world: ${playerPoint.x.toFixed(3)}, ${playerPoint.y.toFixed(3)}, ${playerPoint.z.toFixed(3)} renderer: ${this.enabled ? 'Three.js' : 'inactive'}`,
+        firstObstacle
+          ? `OBSTACLE logical y: ${firstObstacle.y.toFixed(1)} h: ${firstObstacle.height} worldY: ${obstaclePoint.y.toFixed(3)}`
+          : 'OBSTACLE none',
+        `CAMERA l/r/t/b: ${camera.left} / ${camera.right} / ${camera.top} / ${camera.bottom}`,
+        `CAMERA position: ${camera.position.x.toFixed(3)}, ${camera.position.y.toFixed(3)}, ${camera.position.z.toFixed(3)}`,
+        `VIEWPORT css: ${rect.width.toFixed(1)}x${rect.height.toFixed(1)} dpr: ${window.devicePixelRatio || 1}`,
+      ].join('\n');
     }
     this._syncDebugBox('player', this.playerMesh, player.width, player.height, player.x, player.y);
 
