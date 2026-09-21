@@ -105,9 +105,10 @@ body::after {
 
 #three-layer {
   position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   display: block;
-  width: min(100%, 900px);
-  height: 300px;
   pointer-events: none;
   z-index: 1;
 }

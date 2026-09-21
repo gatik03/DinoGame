@@ -552,6 +552,25 @@ describe('2.5D rendering adapters', () => {
     expect(gameplayToWorld(100, 200)).toEqual({ x: 1, y: -2, z: 0 });
   });
 
+  test.each([
+    [1920, 1080, 1, 900, 300],
+    [1366, 768, 1.5, 900, 300],
+    [1280, 720, 2, 900, 300],
+    [1024, 768, 1, 900, 300],
+    [768, 1024, 2, 768, 256],
+    [390, 844, 1.5, 390, 130],
+  ])('uses one logical viewport for %sx%s at DPR %s', (vw, vh, dpr, expectedW, expectedH) => {
+    window.devicePixelRatio = dpr;
+    const viewport = getRenderViewport(vw, vh, CONFIG.CANVAS.WIDTH, CONFIG.CANVAS.HEIGHT);
+
+    expect(viewport.width).toBe(expectedW);
+    expect(viewport.height).toBe(expectedH);
+    expect(viewport.dpr).toBe(Math.min(dpr, 2));
+    expect(viewport.logicalWidth).toBe(CONFIG.CANVAS.WIDTH);
+    expect(viewport.logicalHeight).toBe(CONFIG.CANVAS.HEIGHT);
+    expect(gameplayToWorld(110, CONFIG.CANVAS.GROUND_Y).y).toBe(-2.52);
+  });
+
   test('maps gameplay states to model animation names', () => {
     expect(playerStateToAnimation('running')).toBe('run');
     expect(playerStateToAnimation('sliding')).toBe('duck');

@@ -61,7 +61,13 @@ class Game {
 
     this._resizeCanvas();
     this.ctx = this.canvas.getContext('2d');
+    // Reapply the initial resize after the context exists so the first frame
+    // receives the correct devicePixelRatio transform.
+    this._resizeCanvas();
     this.visualRenderer = new NeonRenderer(this.canvas);
+    // NeonRenderer creates the WebGL layer after the initial Canvas resize;
+    // apply the same viewport to both layers immediately.
+    this.visualRenderer.resize(this._viewport);
 
     this.audio           = new AudioSystem();
     this.particles       = new ParticleSystem();
@@ -87,20 +93,25 @@ class Game {
   }
 
   _resizeCanvas() {
-    const maxW = CONFIG.CANVAS.WIDTH;
-    const maxH = CONFIG.CANVAS.HEIGHT;
-    const scale = Math.min(window.innerWidth / maxW, window.innerHeight / maxH, 1);
-    this.canvas.width  = Math.floor(maxW * scale);
-    this.canvas.height = maxH;
-    if (this.canvas.width < maxW) {
-      this.canvas.style.width  = `${this.canvas.width}px`;
-      this.canvas.style.height = `${this.canvas.height}px`;
-    } else {
-      this.canvas.style.width  = `${maxW}px`;
-      this.canvas.style.height = `${maxH}px`;
-    }
-    this._scale = scale;
-    if (this.visualRenderer) this.visualRenderer.resize(maxW, maxH);
+    const viewport = getRenderViewport(
+      this.canvas.parentElement?.clientWidth || window.innerWidth,
+      this.canvas.parentElement?.clientHeight || window.innerHeight,
+      CONFIG.CANVAS.WIDTH,
+      CONFIG.CANVAS.HEIGHT,
+    );
+    const dpr = viewport.dpr;
+
+    // Keep the backing store in logical game units (at DPR resolution). CSS
+    // scaling is the only viewport-dependent transform; gameplay never is.
+    this.canvas.width = Math.round(viewport.logicalWidth * dpr);
+    this.canvas.height = Math.round(viewport.logicalHeight * dpr);
+    this.canvas.style.width = `${viewport.width}px`;
+    this.canvas.style.height = `${viewport.height}px`;
+    this._viewport = viewport;
+    this._scale = viewport.scale;
+
+    if (this.ctx) this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (this.visualRenderer) this.visualRenderer.resize(viewport);
   }
 
   // ─── Input ────────────────────────────────────────────────────────────────
@@ -150,8 +161,10 @@ class Game {
     this.canvas.addEventListener('click', (e) => {
       this.audio.unlock();
       const rect = this.canvas.getBoundingClientRect();
-      const scale = CONFIG.CANVAS.WIDTH / rect.width;
-      this._handleClick((e.clientX - rect.left) * scale, (e.clientY - rect.top) * scale);
+      this._handleClick(
+        (e.clientX - rect.left) * CONFIG.CANVAS.WIDTH / rect.width,
+        (e.clientY - rect.top) * CONFIG.CANVAS.HEIGHT / rect.height,
+      );
     });
 
     this.canvas.addEventListener('touchstart', (e) => {
@@ -159,8 +172,10 @@ class Game {
       this.audio.unlock();
       const rect = this.canvas.getBoundingClientRect();
       const touch = e.touches[0];
-      const scale = CONFIG.CANVAS.WIDTH / rect.width;
-      this._handleClick((touch.clientX - rect.left) * scale, (touch.clientY - rect.top) * scale);
+      this._handleClick(
+        (touch.clientX - rect.left) * CONFIG.CANVAS.WIDTH / rect.width,
+        (touch.clientY - rect.top) * CONFIG.CANVAS.HEIGHT / rect.height,
+      );
     }, { passive: false });
   }
 
@@ -531,12 +546,7 @@ class Game {
     const W = CONFIG.CANVAS.WIDTH;
     const H = CONFIG.CANVAS.HEIGHT;
 
-    // Scale ctx to fit canvas element width
     ctx.save();
-    if (this.canvas.width < W) {
-      ctx.scale(this.canvas.width / W, 1);
-    }
-
     ctx.clearRect(0, 0, W, H);
 
     this.background.draw(ctx);

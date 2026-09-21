@@ -48,8 +48,8 @@ class NeonRenderer {
     }
   }
 
-  resize(width, height) {
-    if (this.enabled) this.scene.resize(width, height);
+  resize(viewport) {
+    if (this.enabled) this.scene.resize(viewport);
   }
 
   async _loadPlayerModel() {

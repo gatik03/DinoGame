@@ -20,23 +20,38 @@ class NeonScene {
     light.position.set(4, 5, 8);
     this.scene.add(light);
 
+    const scale = window.NEON_WORLD_SCALE || 0.01;
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(24, 0.03),
       new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.65 }),
     );
-    ground.position.set(4.5, -2.52, 0);
+    ground.position.set(
+      CONFIG.CANVAS.WIDTH * scale / 2,
+      gameplayToWorld(0, CONFIG.CANVAS.GROUND_Y).y,
+      0,
+    );
     this.scene.add(ground);
-    this.resize(900, 300);
+    this.resize({
+      logicalWidth: CONFIG.CANVAS.WIDTH,
+      logicalHeight: CONFIG.CANVAS.HEIGHT,
+      width: CONFIG.CANVAS.WIDTH,
+      height: CONFIG.CANVAS.HEIGHT,
+      dpr: Math.min(window.devicePixelRatio || 1, 2),
+    });
   }
 
-  resize(width, height) {
+  resize(viewport) {
     const scale = window.NEON_WORLD_SCALE || 0.01;
+    const { logicalWidth, logicalHeight, width, height, dpr } = viewport;
     this.camera.left = 0;
-    this.camera.right = width * scale;
+    this.camera.right = logicalWidth * scale;
     this.camera.top = 0;
-    this.camera.bottom = -height * scale;
+    this.camera.bottom = -logicalHeight * scale;
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(width, height, false);
+    this.renderer.setPixelRatio(dpr);
+    this.renderer.setSize(logicalWidth, logicalHeight, false);
+    this.renderer.domElement.style.width = `${width}px`;
+    this.renderer.domElement.style.height = `${height}px`;
   }
 
   render() {
